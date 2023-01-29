@@ -20,8 +20,6 @@ const bamboo = new Bamboo({
   .applyBambooMessage()
   .applyBambooThread();
 
-console.log(bamboo);
-
 const handler = async (
   event: AwsEvent,
   context: any,

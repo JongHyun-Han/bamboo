@@ -2,15 +2,17 @@ import {
   AllMiddlewareArgs,
   App,
   GlobalShortcut,
+  PlainTextOption,
   SlackShortcutMiddlewareArgs,
   SlackViewAction,
   SlackViewMiddlewareArgs,
   ViewSubmitAction,
 } from "@slack/bolt";
 import { sendMessage } from "../utils/chat";
+import { SLACK_BAMBOO_CHANNEL, SLACK_BOT_TOKEN } from "../utils/env";
 import { getRandomName } from "../utils/names";
 
-const IDENTIFIER = "bamboo_message";
+const IDENTIFIER = "bamboo_message" as const;
 
 const openMessageModal = async ({
   shortcut,
@@ -44,6 +46,24 @@ const openMessageModal = async ({
         blocks: [
           {
             type: "input",
+            block_id: "#channels",
+            element: {
+              type: "conversations_select",
+              placeholder: {
+                type: "plain_text",
+                text: "채널을 선택하세요",
+                emoji: true,
+              },
+              action_id: "#channel",
+            },
+            label: {
+              type: "plain_text",
+              text: "채널 선택",
+              emoji: true,
+            },
+          },
+          {
+            type: "input",
             block_id: `#content`,
             element: {
               type: "plain_text_input",
@@ -54,6 +74,7 @@ const openMessageModal = async ({
                 emoji: true,
               },
               action_id: `#message`,
+              focus_on_load: true,
             },
             label: {
               type: "plain_text",
@@ -80,28 +101,6 @@ const openMessageModal = async ({
               emoji: true,
             },
           },
-          {
-            type: "section",
-            block_id: `#confirm`,
-            text: {
-              type: "mrkdwn",
-              text: " ",
-            },
-            accessory: {
-              type: "checkboxes",
-              focus_on_load: true,
-              options: [
-                {
-                  text: {
-                    type: "mrkdwn",
-                    text: ":warning: *한 번 전송한 메시지는 수정이 불가능함을 확인했어요.*",
-                  },
-                  value: "checked", // 의미 없는 값
-                },
-              ],
-              action_id: `#checked`,
-            },
-          },
         ],
       },
     });
@@ -122,15 +121,21 @@ const responseModal = async ({
 
     const name = values["#name"]["#message"].value ?? getRandomName();
     const message = values[`#content`][`#message`].value ?? "";
+    const channel = values[`#channels`][`#channel`].selected_conversation ?? "";
 
-    const checked =
-      (values[`#confirm`][`#checked`]["selected_options"]?.length ?? 0) > 0;
+    console.log("channel :>> ", channel);
 
-    if (!checked) {
+    const { channels = [] } = await client.users.conversations({
+      token: SLACK_BOT_TOKEN,
+      types: "public_channel,private_channel",
+      exclude_archived: true,
+    });
+
+    if (!channels.find((item) => item.id === channel)) {
       await ack({
         response_action: "errors",
         errors: {
-          [`#content`]: "아래 체크박스에 동의해주세요.",
+          [`#channels`]: "해당 채널에 봇이 초대되어 있지 않습니다.",
         },
       });
       return;
@@ -138,6 +143,7 @@ const responseModal = async ({
 
     await ack();
     await sendMessage({
+      channel,
       client,
       name,
       message,

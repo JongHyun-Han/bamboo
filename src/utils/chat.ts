@@ -4,7 +4,8 @@ import { formattedMessage } from "./format";
 
 import { SLACK_BAMBOO_CHANNEL } from "./env";
 
-export const BAMBOO_MESSAGE_CONTENT_BLOCK_ID = "#bamboo_message_content";
+export const BAMBOO_MESSAGE_CONTENT_BLOCK_ID =
+  "#bamboo_message_content" as const;
 
 export const getOriginalMessageFromBlocks = (blocks: SectionBlock[] = []) => {
   return (
@@ -15,11 +16,13 @@ export const getOriginalMessageFromBlocks = (blocks: SectionBlock[] = []) => {
 };
 
 export const sendMessage = async ({
+  channel = SLACK_BAMBOO_CHANNEL,
   client,
   name,
   message,
   thread_ts,
 }: {
+  channel?: string;
   client: WebClient;
   name: string;
   message: string;
@@ -47,7 +50,7 @@ export const sendMessage = async ({
         },
       },
     ],
-    channel: SLACK_BAMBOO_CHANNEL,
+    channel,
     thread_ts,
   });
 };

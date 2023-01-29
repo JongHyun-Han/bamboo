@@ -99,28 +99,6 @@ const sendView = async ({
             emoji: true,
           },
         },
-        {
-          type: "section",
-          block_id: `#confirm`,
-          text: {
-            type: "mrkdwn",
-            text: " ",
-          },
-          accessory: {
-            type: "checkboxes",
-            focus_on_load: true,
-            options: [
-              {
-                text: {
-                  type: "mrkdwn",
-                  text: ":warning: *한 번 전송한 메시지는 수정이 불가능함을 확인했어요.*",
-                },
-                value: "checked",
-              },
-            ],
-            action_id: `#checked`,
-          },
-        },
       ],
     },
   });
@@ -141,6 +119,7 @@ const openThreadModal = async ({
     const originalMessage = getOriginalMessageFromBlocks(body.message?.blocks);
     const description = `현재 아래 메시지에 스레드를 다는 중이에요.\n\n>>>\n${originalMessage}`;
     const private_metadata = JSON.stringify({
+      channel: body.channel?.id ?? "",
       message_ts: body.message?.ts ?? "",
     });
     const serialized = JSON.stringify(private_metadata);
@@ -167,24 +146,13 @@ const responseModal = async ({
 
     const name = values["#name"]["#message"].value ?? getRandomName();
     const message = values[`#content`][`#message`].value ?? "";
-    const checked =
-      (values[`#confirm`][`#checked`]["selected_options"]?.length ?? 0) > 0;
 
     const private_metadata = JSON.parse(JSON.parse(view["private_metadata"]));
-    const thread_ts = private_metadata["message_ts"];
-
-    if (!checked) {
-      await ack({
-        response_action: "errors",
-        errors: {
-          [`#content`]: "아래 체크박스에 동의해주세요.",
-        },
-      });
-      return;
-    }
+    const { message_ts: thread_ts, channel } = private_metadata;
 
     await ack();
     await sendMessage({
+      channel,
       client,
       name,
       message,
